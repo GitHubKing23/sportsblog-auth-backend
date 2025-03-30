@@ -1,34 +1,50 @@
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const connectDB = require('./config/db');
+import express from 'express';
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import cors from 'cors';
+import authRoutes from '../routes/auth.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-// Load environment variables
-dotenv.config();
+// 🔧 Ensure .env is loaded from the project root
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-// Connect to MongoDB
-connectDB();
+// 🔍 Show what env variables we’re loading
+console.log("🔧 Loaded ENV variables:");
+console.log("- PORT:", process.env.PORT);
+console.log("- FRONTEND_URL:", process.env.FRONTEND_URL);
+console.log("- MONGO_URI:", process.env.MONGO_URI ? "✅ Exists" : "❌ Missing");
+console.log("- JWT_SECRET:", process.env.JWT_SECRET ? "✅ Exists" : "❌ Missing");
 
-// Initialize Express
 const app = express();
-
-// Middleware setup
 app.use(express.json());
-app.use(cors());
 
-// Import Routes
-const ethereumAuthRoutes = require('./routes/ethereumAuthRoutes');
+// ✅ CORS setup
+app.use(cors({
+  origin: process.env.FRONTEND_URL || '*',
+  credentials: true
+}));
 
-// Use Routes
-app.use('/auth/ethereum', ethereumAuthRoutes);
+// ✅ MongoDB Connection
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("✅ MongoDB Connected"))
+  .catch(err => {
+    console.error("❌ MongoDB connection failed:");
+    console.error(err);
+    process.exit(1); // Optional: Exit if DB fails
+  });
 
-// Basic route for testing
+// ✅ Ethereum Auth Routes
+app.use('/auth', authRoutes);
+
+// ✅ Health Check
 app.get('/', (req, res) => {
-  res.send('Sports Blog Authentication Backend is running!');
+  res.send('✅ Ethereum Auth API is running...');
 });
 
-// Start server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+// ✅ Start Server
+const PORT = process.env.PORT || 5003;
+console.log("🚀 Starting Ethereum Auth Server on port:", PORT);
+app.listen(PORT, () => console.log(`🚀 Ethereum Auth Server running on port ${PORT}`));

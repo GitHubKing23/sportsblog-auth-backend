@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Ethereum Login Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.2/dist/ethers.umd.min.js"></script>
+</head>
+<body>
+  <h1>🦊 Ethereum Login (MetaMask)</h1>
+  <button onclick="login()">Sign in with MetaMask</button>
+  <p id="status"></p>
+
+  <script>
+    async function login() {
+      const statusEl = document.getElementById("status");
+
+      // ✅ MetaMask Detection
+      if (typeof window.ethereum === "undefined") {
+        statusEl.innerText = "❌ MetaMask not detected. Please install it from https://metamask.io";
+        return;
+      }
+
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        const signer = await provider.getSigner();
+        const address = await signer.getAddress();
+
+        statusEl.innerText = "🔍 Wallet: " + address;
+
+        // ✅ STEP 1: Get Nonce from Backend
+        const nonceRes = await fetch("http://localhost:5000/auth/get-nonce", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ address })
+        });
+
+        const { nonce } = await nonceRes.json();
+        const message = `Sign this message to authenticate. Nonce: ${nonce}`;
+        const signature = await signer.signMessage(message);
+
+        // ✅ STEP 2: Verify Signature with Backend
+        const verifyRes = await fetch("http://localhost:5000/auth/web3-login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ address, signature })
+        });
+
+        const result = await verifyRes.json();
+
+        if (verifyRes.ok) {
+          statusEl.innerText += `\n✅ Logged in! Token: ${result.token}`;
+        } else {
+          statusEl.innerText += `\n❌ Login failed: ${result.message}`;
+        }
+
+      } catch (err) {
+        console.error(err);
+        statusEl.innerText = "❌ Error: " + err.message;
+      }
+    }
+  </script>
+</body>
+</html>

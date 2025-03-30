@@ -1,6 +1,7 @@
 {
   "name": "sportsblog-auth-backend",
   "version": "1.0.0",
+  "type": "module",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
@@ -24,3 +25,4 @@
     "nodemon": "^3.1.0"
   }
 }
+
