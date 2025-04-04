@@ -6,12 +6,12 @@ import authRoutes from '../routes/auth.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// 🔧 Ensure .env is loaded from the project root
+// ✅ Load environment variables from .env
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-// 🔍 Show what env variables we’re loading
+// ✅ Debug: Show loaded ENV variables
 console.log("🔧 Loaded ENV variables:");
 console.log("- PORT:", process.env.PORT);
 console.log("- FRONTEND_URL:", process.env.FRONTEND_URL);
@@ -27,24 +27,27 @@ app.use(cors({
   credentials: true
 }));
 
-// ✅ MongoDB Connection
+// ✅ MongoDB connection
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Connected"))
   .catch(err => {
     console.error("❌ MongoDB connection failed:");
     console.error(err);
-    process.exit(1); // Optional: Exit if DB fails
+    process.exit(1); // Exit if DB fails
   });
 
 // ✅ Ethereum Auth Routes
 app.use('/auth', authRoutes);
 
-// ✅ Health Check
+// ✅ Health check endpoint
 app.get('/', (req, res) => {
   res.send('✅ Ethereum Auth API is running...');
 });
 
-// ✅ Start Server
+// ✅ Start server and allow external connections
 const PORT = process.env.PORT || 5003;
 console.log("🚀 Starting Ethereum Auth Server on port:", PORT);
-app.listen(PORT, () => console.log(`🚀 Ethereum Auth Server running on port ${PORT}`));
+
+app.listen(PORT, '0.0.0.0', () =>
+  console.log(`🚀 Ethereum Auth Server running on http://0.0.0.0:${PORT}`)
+);
