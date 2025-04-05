@@ -1,8 +1,26 @@
 import mongoose from 'mongoose';
 
 const UserSchema = new mongoose.Schema({
-    walletAddress: { type: String, required: true, unique: true },
-    nonce: { type: Number, required: true, default: () => Math.floor(Math.random() * 1000000) }
+  ethereumAddress: {
+    type: String,
+    required: true,
+    unique: true,
+    lowercase: true,
+    trim: true,
+  },
+  nonce: {
+    type: String,
+    required: true,
+    default: () => Math.random().toString(36).substring(2, 15) // Optional: More readable nonce
+  },
+  authMethods: {
+    type: [String],
+    default: ['ethereum'],
+  },
+  roles: {
+    type: [String],
+    default: ['Commenter'],
+  },
 });
 
 export default mongoose.model('User', UserSchema);
