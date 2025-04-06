@@ -21,11 +21,16 @@ console.log("- JWT_SECRET:", process.env.JWT_SECRET ? "✅ Exists" : "❌ Missin
 const app = express();
 app.use(express.json());
 
-// ✅ CORS setup
+// ✅ CORS setup with proper headers for preflight
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
-  credentials: true
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
+// ✅ Handle preflight requests globally
+app.options('*', cors());
 
 // ✅ MongoDB connection
 mongoose.connect(process.env.MONGO_URI)
