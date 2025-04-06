@@ -8,18 +8,12 @@ const getNonce = async (req, res) => {
   try {
     let { ethereumAddress } = req.body;
 
-    if (!ethereumAddress || typeof ethereumAddress !== 'string') {
-      console.warn('⚠️ Missing or invalid Ethereum address:', ethereumAddress);
+    if (!ethereumAddress || typeof ethereumAddress !== 'string' || ethereumAddress.trim() === '') {
+      console.warn('⚠️ Missing or invalid Ethereum address');
       return res.status(400).json({ error: 'Valid Ethereum address is required' });
     }
 
     ethereumAddress = ethereumAddress.trim().toLowerCase();
-
-    // ✅ Validate format using ethers
-    if (!ethers.isAddress(ethereumAddress)) {
-      console.warn('⚠️ Not a valid Ethereum address format:', ethereumAddress);
-      return res.status(400).json({ error: 'Invalid Ethereum address format' });
-    }
 
     const nonce = crypto.randomBytes(16).toString('hex');
 
@@ -30,13 +24,14 @@ const getNonce = async (req, res) => {
         walletAddress: ethereumAddress,
         nonce,
         authMethods: ['ethereum'],
-        roles: ['Commenter'],
+        roles: ['Commenter']
       });
     } else {
       user.nonce = nonce;
     }
 
     await user.save();
+    console.log(`✅ Nonce generated for: ${ethereumAddress}`);
     return res.status(200).json({ nonce });
   } catch (error) {
     console.error('❌ Error generating nonce:', error);
@@ -68,6 +63,7 @@ const verifySignature = async (req, res) => {
       return res.status(401).json({ error: 'Invalid signature - verification failed' });
     }
 
+    // Invalidate nonce to prevent replay
     user.nonce = null;
     await user.save();
 
@@ -81,6 +77,7 @@ const verifySignature = async (req, res) => {
       { expiresIn: '1h' }
     );
 
+    console.log(`✅ Signature verified for: ${ethereumAddress}`);
     return res.status(200).json({ token });
   } catch (error) {
     console.error('❌ Signature verification failed:', error);
