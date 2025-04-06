@@ -1,9 +1,9 @@
 import mongoose from 'mongoose';
 
 const UserSchema = new mongoose.Schema({
-  ethereumAddress: {
+  walletAddress: {
     type: String,
-    required: true,
+    required: [true, 'Wallet address is required'],
     unique: true,
     lowercase: true,
     trim: true,
@@ -11,7 +11,7 @@ const UserSchema = new mongoose.Schema({
   nonce: {
     type: String,
     required: true,
-    default: () => Math.random().toString(36).substring(2, 15) // Optional: More readable nonce
+    default: () => Math.random().toString(36).substring(2, 15), // readable nonce
   },
   authMethods: {
     type: [String],
@@ -23,4 +23,5 @@ const UserSchema = new mongoose.Schema({
   },
 });
 
-export default mongoose.model('User', UserSchema);
+// Optional: prevent duplicate model registration in dev
+export default mongoose.models.User || mongoose.model('User', UserSchema);
