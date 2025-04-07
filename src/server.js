@@ -2,7 +2,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import authRoutes from '../routes/auth.js';
+import authRoutes from '../routes/auth.js'; // adjust if needed
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -19,18 +19,33 @@ console.log("- MONGO_URI:", process.env.MONGO_URI ? "✅ Exists" : "❌ Missing"
 console.log("- JWT_SECRET:", process.env.JWT_SECRET ? "✅ Exists" : "❌ Missing");
 
 const app = express();
-app.use(express.json());
 
-// ✅ CORS setup with proper headers for preflight
+// ✅ Multi-Origin CORS Setup
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://sportifyinsider.com',
+];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`❌ Blocked by CORS: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// ✅ Handle preflight requests globally
-app.options('*', cors());
+// ✅ Body parser
+app.use(express.json());
+
+// ✅ Request Logger (for debugging)
+app.use((req, res, next) => {
+  console.log(`📥 Incoming request: ${req.method} ${req.url}`);
+  next();
+});
 
 // ✅ MongoDB connection
 mongoose.connect(process.env.MONGO_URI)
