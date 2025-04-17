@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
   email: {
@@ -6,35 +6,36 @@ const userSchema = new mongoose.Schema({
     unique: true,
     sparse: true,
     lowercase: true,
-    trim: true
+    trim: true,
   },
   passwordHash: {
-    type: String
+    type: String,
   },
   ethereumAddress: {
     type: String,
     unique: true,
     sparse: true,
     lowercase: true,
-    trim: true
+    trim: true,
   },
   nonce: {
     type: String,
-    default: null
+    default: null,
   },
   roles: {
     type: [String],
-    default: ['Commenter']
+    default: ['Commenter'],
   },
   authMethods: {
     type: [String],
     enum: ['email', 'ethereum'],
-    default: []
+    default: [],
   },
   isEmailVerified: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 }, { timestamps: true });
 
-module.exports = mongoose.model('User', userSchema);
+const User = mongoose.model('User', userSchema);
+export default User;

@@ -1,0 +1,42 @@
+=== FILE: C:\Users\User\auth-backend\server.js NOT FOUND ===
+
+=== FILE: C:\Users\User\auth-backend\.env ===
+
+PORT=5003
+MONGO_URI=mongodb+srv://wise11jeff:HzsLHgSQRjaGBJdI@cluster0.ylwiw.mongodb.net/ethereum-auth?retryWrites=true&w=majority&appName=Cluster0
+JWT_SECRET=yourSuperSecretKey
+FRONTEND_URL=https://sportifyinsider.com
+
+
+=== FILE: C:\Users\User\auth-backend\package.json ===
+
+{
+  "name": "sportsblog-auth-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Advanced user authentication backend for Sports Blog supporting Ethereum and Email login.",
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "ethers": "^6.13.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.12.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
+
+
+

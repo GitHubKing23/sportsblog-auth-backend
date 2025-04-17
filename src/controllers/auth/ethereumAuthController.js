@@ -1,7 +1,7 @@
-const User = require('../../models/User');
-const jwt = require('jsonwebtoken');
-const { ethers } = require('ethers');
-const crypto = require('crypto');
+import User from '../../models/User.js';
+import jwt from 'jsonwebtoken';
+import { ethers } from 'ethers';
+import crypto from 'crypto';
 
 // ✅ GET NONCE
 const getNonce = async (req, res) => {
@@ -17,16 +17,19 @@ const getNonce = async (req, res) => {
 
     const nonce = crypto.randomBytes(16).toString('hex');
 
-    let user = await User.findOne({ walletAddress: ethereumAddress });
+    let user = await User.findOne({ ethereumAddress });
 
     if (!user) {
       user = new User({
-        walletAddress: ethereumAddress,
+        ethereumAddress,
         nonce,
         authMethods: ['ethereum'],
-        roles: ['Commenter']
+        roles: ['Commenter'],
       });
     } else {
+      if (!user.authMethods.includes('ethereum')) {
+        user.authMethods.push('ethereum');
+      }
       user.nonce = nonce;
     }
 
@@ -50,7 +53,7 @@ const verifySignature = async (req, res) => {
 
     ethereumAddress = ethereumAddress.trim().toLowerCase();
 
-    const user = await User.findOne({ walletAddress: ethereumAddress });
+    const user = await User.findOne({ ethereumAddress });
 
     if (!user || !user.nonce) {
       return res.status(400).json({ error: 'Invalid or expired Ethereum login attempt' });
@@ -70,7 +73,7 @@ const verifySignature = async (req, res) => {
     const token = jwt.sign(
       {
         userId: user._id,
-        walletAddress: user.walletAddress,
+        ethereumAddress: user.ethereumAddress,
         roles: user.roles,
       },
       process.env.JWT_SECRET,
@@ -85,7 +88,4 @@ const verifySignature = async (req, res) => {
   }
 };
 
-module.exports = {
-  getNonce,
-  verifySignature
-};
+export { getNonce, verifySignature };

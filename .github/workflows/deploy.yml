@@ -2,7 +2,7 @@ name: Deploy Auth Backend to VPS
 
 on:
   push:
-    branches: [master]
+    branches: [main]
 
 jobs:
   deploy:
@@ -22,6 +22,6 @@ jobs:
           port: 22
           script: |
             cd /home/ubuntu/sportsblog-auth-backend
-            git pull origin master
+            git pull origin main
             npm install
-            pm2 restart sportsblog-auth-backend
+            pm2 restart auth-backend
