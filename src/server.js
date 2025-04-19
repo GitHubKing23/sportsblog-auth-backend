@@ -1,21 +1,14 @@
-// src/server.js
-import express from 'express';
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-import cors from 'cors';
-import authRoutes from './routes/ethereumAuthRoutes.js';
-import path from 'path';
-import { createServer } from 'http';
-import { Server } from 'socket.io';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+const express = require("express");
+const mongoose = require("mongoose");
+const dotenv = require("dotenv");
+const cors = require("cors");
+const path = require("path");
+const http = require("http");
+const { Server } = require("socket.io");
+const authRoutes = require("./routes/ethereumAuthRoutes");
 
-// Necessary for __dirname in ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Load .env
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+// ✅ Load .env file
+dotenv.config({ path: path.join(__dirname, "../.env") });
 
 console.log("🔧 Loaded ENV variables:");
 console.log("- PORT:", process.env.PORT);
@@ -24,29 +17,26 @@ console.log("- MONGO_URI:", process.env.MONGO_URI ? "✅ Exists" : "❌ Missing"
 console.log("- JWT_SECRET:", process.env.JWT_SECRET ? "✅ Exists" : "❌ Missing");
 
 const app = express();
-const server = createServer(app);
+const server = http.createServer(app);
 
+// ✅ Socket setup
 const io = new Server(server, {
   cors: {
-    origin: ['http://localhost:3000', 'https://sportifyinsider.com'],
+    origin: ["http://localhost:3000", "https://sportifyinsider.com"],
     credentials: true,
   },
 });
+app.set("io", io);
 
-app.set('io', io);
-
-const allowedOrigins = [
-  'http://localhost:3000',
-  'https://sportifyinsider.com',
-];
-
+// ✅ CORS config
+const allowedOrigins = ["http://localhost:3000", "https://sportifyinsider.com"];
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       console.warn(`❌ Blocked by CORS: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
+      callback(new Error("Not allowed by CORS"));
     }
   },
   credentials: true,
@@ -56,35 +46,41 @@ app.use(cors({
 
 app.use(express.json());
 
+// ✅ Log all incoming requests
 app.use((req, res, next) => {
   console.log(`📥 Incoming request: ${req.method} ${req.url}`);
   next();
 });
 
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB Connected"))
-  .catch(err => {
-    console.error("❌ MongoDB connection failed:");
-    console.error(err);
-    process.exit(1);
-  });
-
-app.use('/api/auth', authRoutes);
-
-app.get('/', (req, res) => {
-  res.send('✅ Ethereum Auth API is running...');
+// ✅ DB Connection
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => console.log("✅ MongoDB Connected"))
+.catch((err) => {
+  console.error("❌ MongoDB connection failed:", err);
+  process.exit(1);
 });
 
-io.on('connection', (socket) => {
-  console.log('✅ A user connected:', socket.id);
-  socket.on('disconnect', () => {
-    console.log('❌ User disconnected:', socket.id);
+// ✅ Mount routes at root (not /api/auth) to avoid NGINX double prefix issue
+app.use("/", authRoutes);
+
+// ✅ Test route
+app.get("/", (req, res) => {
+  res.send("✅ Ethereum Auth API is running...");
+});
+
+// ✅ Socket events
+io.on("connection", (socket) => {
+  console.log("✅ A user connected:", socket.id);
+  socket.on("disconnect", () => {
+    console.log("❌ User disconnected:", socket.id);
   });
 });
 
+// ✅ Start server
 const PORT = process.env.PORT || 5003;
-console.log("🚀 Starting Ethereum Auth Server on port:", PORT);
-
-server.listen(PORT, '0.0.0.0', () =>
+server.listen(PORT, "0.0.0.0", () =>
   console.log(`🚀 Ethereum Auth Server running on http://0.0.0.0:${PORT}`)
 );
