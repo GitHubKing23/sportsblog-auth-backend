@@ -1,7 +1,7 @@
-import express from 'express';
-import jwt from 'jsonwebtoken';
-import { ethers } from 'ethers';
-import User from '../models/User.js';
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const { ethers } = require('ethers');
+const User = require('../models/User');
 
 const router = express.Router();
 
@@ -60,14 +60,12 @@ router.post('/verify', async (req, res) => {
       return res.status(401).json({ message: "Signature verification failed." });
     }
 
-    // Generate JWT
     const token = jwt.sign(
       { id: user._id, ethereumAddress: user.ethereumAddress },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
 
-    // Reset nonce after login
     user.nonce = null;
     await user.save();
 
@@ -84,4 +82,4 @@ router.post('/verify', async (req, res) => {
   }
 });
 
-export default router;
+module.exports = router;

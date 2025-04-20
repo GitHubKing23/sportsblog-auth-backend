@@ -8,7 +8,7 @@ const { Server } = require("socket.io");
 const authRoutes = require("./routes/ethereumAuthRoutes");
 
 // ✅ Load .env file
-dotenv.config({ path: path.join(__dirname, "../.env") });
+dotenv.config({ path: path.join(__dirname, "../.env") }); // Adjust to "../../.env" if .env is in /home/ubuntu/
 
 console.log("🔧 Loaded ENV variables:");
 console.log("- PORT:", process.env.PORT);
@@ -50,6 +50,12 @@ app.use(express.json());
 app.use((req, res, next) => {
   console.log(`📥 Incoming request: ${req.method} ${req.url}`);
   next();
+});
+
+// ✅ Test route for debugging
+app.post("/test", (req, res) => {
+  console.log("Test route hit:", req.body);
+  res.json({ message: "Test route works" });
 });
 
 // ✅ DB Connection
