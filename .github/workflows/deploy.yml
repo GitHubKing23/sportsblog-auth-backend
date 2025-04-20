@@ -26,4 +26,4 @@ jobs:
             git clean -fd
             git pull origin master
             npm install
-            pm2 restart sportsblog-auth-backend --update-env
+            pm2 restart auth-backend --update-env
