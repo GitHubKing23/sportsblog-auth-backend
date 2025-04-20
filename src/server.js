@@ -49,29 +49,16 @@ app.use((req, res, next) => {
   next();
 });
 
-// ✅ TEST ROUTES to identify proxy_pass hits
-app.post("/nonce", (req, res, next) => {
-  console.log("🎯 Hit /nonce");
-  next();
-});
-app.post("/auth/nonce", (req, res, next) => {
-  console.log("🎯 Hit /auth/nonce");
-  next();
-});
-app.post("/api/auth/nonce", (req, res, next) => {
-  console.log("🎯 Hit /api/auth/nonce");
-  next();
-});
-
 // ✅ Route Mounting
-// Mount routes at root — we rely on nginx to forward to here
-app.use("/", authRoutes);
+// Mount Ethereum Auth routes at /auth
+app.use("/auth", authRoutes);
 
-// ✅ Basic test route
+// ✅ Basic health check route
 app.get("/", (req, res) => {
   res.send("✅ Ethereum Auth API is running...");
 });
 
+// ✅ MongoDB connection
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
