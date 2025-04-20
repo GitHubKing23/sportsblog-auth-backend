@@ -7,8 +7,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 const authRoutes = require("./routes/ethereumAuthRoutes");
 
-// ✅ Load .env file
-dotenv.config({ path: path.join(__dirname, "../.env") }); // Adjust to "../../.env" if .env is in /home/ubuntu/
+dotenv.config({ path: path.join(__dirname, "../.env") });
 
 console.log("🔧 Loaded ENV variables:");
 console.log("- PORT:", process.env.PORT);
@@ -19,7 +18,6 @@ console.log("- JWT_SECRET:", process.env.JWT_SECRET ? "✅ Exists" : "❌ Missin
 const app = express();
 const server = http.createServer(app);
 
-// ✅ Socket setup
 const io = new Server(server, {
   cors: {
     origin: ["http://localhost:3000", "https://sportifyinsider.com"],
@@ -28,7 +26,6 @@ const io = new Server(server, {
 });
 app.set("io", io);
 
-// ✅ CORS config
 const allowedOrigins = ["http://localhost:3000", "https://sportifyinsider.com"];
 app.use(cors({
   origin: (origin, callback) => {
@@ -46,19 +43,35 @@ app.use(cors({
 
 app.use(express.json());
 
-// ✅ Log all incoming requests
+// ✅ Middleware: Logs all requests and headers
 app.use((req, res, next) => {
-  console.log(`📥 Incoming request: ${req.method} ${req.url}`);
+  console.log(`📥 ${req.method} ${req.url} | Host: ${req.headers.host}`);
   next();
 });
 
-// ✅ Test route for debugging
-app.post("/test", (req, res) => {
-  console.log("Test route hit:", req.body);
-  res.json({ message: "Test route works" });
+// ✅ TEST ROUTES to identify proxy_pass hits
+app.post("/nonce", (req, res, next) => {
+  console.log("🎯 Hit /nonce");
+  next();
+});
+app.post("/auth/nonce", (req, res, next) => {
+  console.log("🎯 Hit /auth/nonce");
+  next();
+});
+app.post("/api/auth/nonce", (req, res, next) => {
+  console.log("🎯 Hit /api/auth/nonce");
+  next();
 });
 
-// ✅ DB Connection
+// ✅ Route Mounting
+// Mount routes at root — we rely on nginx to forward to here
+app.use("/", authRoutes);
+
+// ✅ Basic test route
+app.get("/", (req, res) => {
+  res.send("✅ Ethereum Auth API is running...");
+});
+
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -69,15 +82,6 @@ mongoose.connect(process.env.MONGO_URI, {
   process.exit(1);
 });
 
-// ✅ Mount routes at root (not /api/auth) to avoid NGINX double prefix issue
-app.use("/", authRoutes);
-
-// ✅ Test route
-app.get("/", (req, res) => {
-  res.send("✅ Ethereum Auth API is running...");
-});
-
-// ✅ Socket events
 io.on("connection", (socket) => {
   console.log("✅ A user connected:", socket.id);
   socket.on("disconnect", () => {
@@ -85,7 +89,6 @@ io.on("connection", (socket) => {
   });
 });
 
-// ✅ Start server
 const PORT = process.env.PORT || 5003;
 server.listen(PORT, "0.0.0.0", () =>
   console.log(`🚀 Ethereum Auth Server running on http://0.0.0.0:${PORT}`)
