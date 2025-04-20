@@ -22,6 +22,8 @@ jobs:
           port: 22
           script: |
             cd /home/ubuntu/sportsblog-auth-backend
+            git reset --hard origin/master
+            git clean -fd
             git pull origin master
             npm install
-            pm2 restart sportsblog-auth-backend
+            pm2 restart sportsblog-auth-backend --update-env
