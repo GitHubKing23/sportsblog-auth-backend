@@ -5,7 +5,13 @@ const User = require('../models/User');
 
 const router = express.Router();
 
-// Generate Nonce for Signing
+
+// ✅ Health Check Route
+router.get('/health', (req, res) => {
+  res.json({ status: "Ethereum Auth API is healthy ✅" });
+});
+
+// ✅ Generate Nonce for Signing
 router.post('/nonce', async (req, res) => {
   try {
     const { ethereumAddress } = req.body;
@@ -38,7 +44,7 @@ router.post('/nonce', async (req, res) => {
   }
 });
 
-// Authenticate User via Signature Verification
+// ✅ Authenticate User via Signature Verification
 router.post('/verify', async (req, res) => {
   try {
     const { ethereumAddress, signature } = req.body;
