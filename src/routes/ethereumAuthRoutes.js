@@ -43,7 +43,7 @@ router.post('/nonce', async (req, res) => {
   }
 });
 
-// ✅ Authenticate User via Signature Verification (Enhanced Newline Handling)
+// ✅ Authenticate User via Signature Verification (Enhanced Debugging)
 router.post('/verify', async (req, res) => {
   try {
     const { ethereumAddress, signature } = req.body;
@@ -61,21 +61,25 @@ router.post('/verify', async (req, res) => {
     const variations = [baseMessage, baseMessage + "\n", baseMessage + "\n\n", baseMessage + "\n\n\n"];
 
     let recoveredAddress = null;
+
     for (let msg of variations) {
       try {
         recoveredAddress = ethers.verifyMessage(msg, signature);
-        console.log(`✅ Successfully verified using message: "${msg.replace(/\n/g, '\\n')}"`);
+        console.log(`✅ Verified with message variant: "${msg.replace(/\n/g, '\\n')}"`);
+        console.log(`➡️ Recovered Address: ${recoveredAddress}`);
+        console.log(`➡️ Expected Address:  ${ethereumAddress}`);
         break;
       } catch (err) {
-        console.warn(`⚠️ Verification failed for: "${msg.replace(/\n/g, '\\n')}"`);
+        console.warn(`❌ Failed verification with variant: "${msg.replace(/\n/g, '\\n')}"`);
       }
     }
 
     if (!recoveredAddress) {
-      return res.status(401).json({ message: "Signature verification failed after all attempts." });
+      return res.status(401).json({ message: "Signature verification failed after all retries." });
     }
 
     if (recoveredAddress.toLowerCase() !== ethereumAddress.toLowerCase()) {
+      console.error(`❌ Address mismatch! Recovered: ${recoveredAddress}, Expected: ${ethereumAddress}`);
       return res.status(401).json({ message: "Recovered address mismatch." });
     }
 
