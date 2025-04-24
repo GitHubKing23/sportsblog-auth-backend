@@ -43,7 +43,7 @@ router.post('/nonce', async (req, res) => {
   }
 });
 
-// ✅ Authenticate User via Signature Verification (Enhanced Debugging)
+// ✅ Authenticate User via Signature Verification (Enhanced Debugging + MyCrypto fix)
 router.post('/verify', async (req, res) => {
   try {
     const { ethereumAddress, signature } = req.body;
@@ -58,24 +58,30 @@ router.post('/verify', async (req, res) => {
     }
 
     const baseMessage = `Sign this message to authenticate. Nonce: ${user.nonce}`;
-    const variations = [baseMessage, baseMessage + "\n", baseMessage + "\n\n", baseMessage + "\n\n\n"];
+    const variations = [
+      baseMessage,
+      baseMessage + "\n",
+      baseMessage + "\n\n",
+      baseMessage + "\n\n\n",
+      baseMessage + "\\n\n\n" // ✅ Handles MyCrypto double-escaped pattern
+    ];
 
     let recoveredAddress = null;
 
     for (let msg of variations) {
       try {
         recoveredAddress = ethers.verifyMessage(msg, signature);
-        console.log(`✅ Verified with message variant: "${msg.replace(/\n/g, '\\n')}"`);
-        console.log(`➡️ Recovered Address: ${recoveredAddress}`);
-        console.log(`➡️ Expected Address:  ${ethereumAddress}`);
+        console.log(`✅ Verified with variant: "${msg.replace(/\n/g, '\\n')}"`);
+        console.log(`➡️ Recovered: ${recoveredAddress}`);
+        console.log(`➡️ Expected:  ${ethereumAddress}`);
         break;
       } catch (err) {
-        console.warn(`❌ Failed verification with variant: "${msg.replace(/\n/g, '\\n')}"`);
+        console.warn(`❌ Failed with variant: "${msg.replace(/\n/g, '\\n')}"`);
       }
     }
 
     if (!recoveredAddress) {
-      return res.status(401).json({ message: "Signature verification failed after all retries." });
+      return res.status(401).json({ message: "Signature verification failed after all attempts." });
     }
 
     if (recoveredAddress.toLowerCase() !== ethereumAddress.toLowerCase()) {
