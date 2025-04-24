@@ -43,7 +43,7 @@ router.post('/nonce', async (req, res) => {
   }
 });
 
-// ✅ Authenticate User via Signature Verification (Flexible Newline Handling)
+// ✅ Authenticate User via Signature Verification (Enhanced Newline Handling)
 router.post('/verify', async (req, res) => {
   try {
     const { ethereumAddress, signature } = req.body;
@@ -58,21 +58,21 @@ router.post('/verify', async (req, res) => {
     }
 
     const baseMessage = `Sign this message to authenticate. Nonce: ${user.nonce}`;
-    const variants = [baseMessage, baseMessage + "\n", baseMessage + "\n\n", baseMessage + "\n\n\n"];
-    let recoveredAddress = null;
+    const variations = [baseMessage, baseMessage + "\n", baseMessage + "\n\n", baseMessage + "\n\n\n"];
 
-    for (let variant of variants) {
+    let recoveredAddress = null;
+    for (let msg of variations) {
       try {
-        recoveredAddress = ethers.verifyMessage(variant, signature);
-        console.log(`✅ Verified with message variant: "${variant.replace(/\n/g, '\\n')}"`);
+        recoveredAddress = ethers.verifyMessage(msg, signature);
+        console.log(`✅ Successfully verified using message: "${msg.replace(/\n/g, '\\n')}"`);
         break;
       } catch (err) {
-        console.warn(`⚠️ Failed with variant: "${variant.replace(/\n/g, '\\n')}"`);
+        console.warn(`⚠️ Verification failed for: "${msg.replace(/\n/g, '\\n')}"`);
       }
     }
 
     if (!recoveredAddress) {
-      return res.status(401).json({ message: "Signature verification failed after all retries." });
+      return res.status(401).json({ message: "Signature verification failed after all attempts." });
     }
 
     if (recoveredAddress.toLowerCase() !== ethereumAddress.toLowerCase()) {
