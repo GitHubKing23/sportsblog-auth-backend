@@ -43,7 +43,7 @@ router.post('/nonce', async (req, res) => {
   }
 });
 
-// ✅ Authenticate User via Signature Verification (Enhanced Debugging + MyCrypto fix)
+// ✅ Authenticate User via Signature Verification (Enhanced Debugging + MyCrypto Fix)
 router.post('/verify', async (req, res) => {
   try {
     const { ethereumAddress, signature } = req.body;
@@ -63,7 +63,7 @@ router.post('/verify', async (req, res) => {
       baseMessage + "\n",
       baseMessage + "\n\n",
       baseMessage + "\n\n\n",
-      baseMessage + "\\n\n\n" // ✅ Handles MyCrypto double-escaped pattern
+      baseMessage + "\\n\n\n"   // Handle MyCrypto escaped newlines
     ];
 
     let recoveredAddress = null;
@@ -76,7 +76,7 @@ router.post('/verify', async (req, res) => {
         console.log(`➡️ Expected:  ${ethereumAddress}`);
         break;
       } catch (err) {
-        console.warn(`❌ Failed with variant: "${msg.replace(/\n/g, '\\n')}"`);
+        console.warn(`❌ Failed verification with: "${msg.replace(/\n/g, '\\n')}"`);
       }
     }
 
