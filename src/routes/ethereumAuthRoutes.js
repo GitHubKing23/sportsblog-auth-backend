@@ -43,7 +43,7 @@ router.post('/nonce', async (req, res) => {
   }
 });
 
-// ✅ Authenticate User via Signature Verification (with flexible newline handling)
+// ✅ Authenticate User via Signature Verification (Flexible Newline Handling)
 router.post('/verify', async (req, res) => {
   try {
     const { ethereumAddress, signature } = req.body;
@@ -57,19 +57,26 @@ router.post('/verify', async (req, res) => {
       return res.status(404).json({ message: "User not found." });
     }
 
-    let message = `Sign this message to authenticate. Nonce: ${user.nonce}`;
-    let recoveredAddress;
+    const baseMessage = `Sign this message to authenticate. Nonce: ${user.nonce}`;
+    const variants = [baseMessage, baseMessage + "\n", baseMessage + "\n\n", baseMessage + "\n\n\n"];
+    let recoveredAddress = null;
 
-    try {
-      recoveredAddress = ethers.verifyMessage(message, signature);
-    } catch (err) {
-      console.warn("⚠️ First verification failed, retrying with newline...");
-      message += "\n";
-      recoveredAddress = ethers.verifyMessage(message, signature);
+    for (let variant of variants) {
+      try {
+        recoveredAddress = ethers.verifyMessage(variant, signature);
+        console.log(`✅ Verified with message variant: "${variant.replace(/\n/g, '\\n')}"`);
+        break;
+      } catch (err) {
+        console.warn(`⚠️ Failed with variant: "${variant.replace(/\n/g, '\\n')}"`);
+      }
+    }
+
+    if (!recoveredAddress) {
+      return res.status(401).json({ message: "Signature verification failed after all retries." });
     }
 
     if (recoveredAddress.toLowerCase() !== ethereumAddress.toLowerCase()) {
-      return res.status(401).json({ message: "Signature verification failed." });
+      return res.status(401).json({ message: "Recovered address mismatch." });
     }
 
     const token = jwt.sign(
