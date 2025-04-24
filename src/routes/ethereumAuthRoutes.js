@@ -43,13 +43,13 @@ router.post('/nonce', async (req, res) => {
   }
 });
 
-// ✅ Authenticate User via Signature Verification (Enhanced Debugging + MyCrypto Fix)
+// ✅ Authenticate User via Exact Message Verification
 router.post('/verify', async (req, res) => {
   try {
-    const { ethereumAddress, signature } = req.body;
+    const { ethereumAddress, signature, message } = req.body;
 
-    if (!ethereumAddress || !signature) {
-      return res.status(400).json({ message: "⚠️ Missing Ethereum address or signature." });
+    if (!ethereumAddress || !signature || !message) {
+      return res.status(400).json({ message: "⚠️ Missing Ethereum address, signature, or message." });
     }
 
     const user = await User.findOne({ ethereumAddress });
@@ -57,31 +57,15 @@ router.post('/verify', async (req, res) => {
       return res.status(404).json({ message: "User not found." });
     }
 
-    const baseMessage = `Sign this message to authenticate. Nonce: ${user.nonce}`;
-    const variations = [
-      baseMessage,
-      baseMessage + "\n",
-      baseMessage + "\n\n",
-      baseMessage + "\n\n\n",
-      baseMessage + "\\n\n\n"   // Handle MyCrypto escaped newlines
-    ];
-
-    let recoveredAddress = null;
-
-    for (let msg of variations) {
-      try {
-        recoveredAddress = ethers.verifyMessage(msg, signature);
-        console.log(`✅ Verified with variant: "${msg.replace(/\n/g, '\\n')}"`);
-        console.log(`➡️ Recovered: ${recoveredAddress}`);
-        console.log(`➡️ Expected:  ${ethereumAddress}`);
-        break;
-      } catch (err) {
-        console.warn(`❌ Failed verification with: "${msg.replace(/\n/g, '\\n')}"`);
-      }
-    }
-
-    if (!recoveredAddress) {
-      return res.status(401).json({ message: "Signature verification failed after all attempts." });
+    let recoveredAddress;
+    try {
+      recoveredAddress = ethers.verifyMessage(message, signature);
+      console.log(`✅ Verified with exact message.`);
+      console.log(`➡️ Recovered: ${recoveredAddress}`);
+      console.log(`➡️ Expected:  ${ethereumAddress}`);
+    } catch (err) {
+      console.error("❌ Signature verification failed:", err.message);
+      return res.status(401).json({ message: "Signature verification failed." });
     }
 
     if (recoveredAddress.toLowerCase() !== ethereumAddress.toLowerCase()) {
