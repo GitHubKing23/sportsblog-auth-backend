@@ -11,9 +11,11 @@ const connectDB = async () => {
     const username = process.env.ARANGO_USERNAME || 'root';
     const password = process.env.ARANGO_PASSWORD || '';
 
-    db = new Database({ url });
-    if (username) db.useBasicAuth(username, password);
-    db.useDatabase(dbName);
+    db = new Database({
+      url,
+      databaseName: dbName,
+      auth: username ? { username, password } : undefined,
+    });
 
     const info = await db.version();
     console.log('🔗 ArangoDB Connected, version:', info.version);
