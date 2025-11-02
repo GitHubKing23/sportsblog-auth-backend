@@ -3,44 +3,50 @@ const jwt = require('jsonwebtoken');
 const { ethers } = require('ethers');
 const crypto = require('crypto');
 
+// Read an allowed CMS address from env. If a user logs in with this address
+// they will be assigned the 'CMS' role so downstream services (the CMS)
+// can be authorized accordingly.
+const CMS_ETH_ADDRESS = process.env.CMS_ETH_ADDRESS || null;
 /**
  * @desc    Generates a cryptographic nonce tied to a given Ethereum address.
- *          This nonce must be signed by the user to prove ownership of the wallet.
  * @route   POST /auth/ethereum/nonce
  * @access  Public
  */
 const getNonce = async (req, res) => {
   const { ethereumAddress } = req.body;
 
-  // Ensure Ethereum address is provided
   if (!ethereumAddress) {
     return res.status(400).json({ error: 'Ethereum address is required' });
   }
 
   try {
-    // Look for an existing user with the Ethereum address
     let user = await User.findOne({ ethereumAddress });
-
-    // Generate a unique 16-byte nonce to be signed
     const nonce = crypto.randomBytes(16).toString('hex');
 
+    // If this Ethereum address matches the configured CMS address, give it the
+    // 'CMS' role. Otherwise default to a normal 'Commenter' role on first create.
     if (!user) {
-      // If user doesn't exist, create a new one with the nonce
+      const initialRoles = (CMS_ETH_ADDRESS && ethereumAddress.toLowerCase() === CMS_ETH_ADDRESS.toLowerCase())
+        ? ['CMS']
+        : ['Commenter'];
+
       user = new User({
         ethereumAddress,
         nonce,
         authMethods: ['ethereum'],
-        roles: ['Commenter'] // Default role: only comment
+        roles: initialRoles
       });
     } else {
-      // If user exists, just update the nonce
       user.nonce = nonce;
+      // Ensure existing CMS user keeps the CMS role if configured
+      if (CMS_ETH_ADDRESS && ethereumAddress.toLowerCase() === CMS_ETH_ADDRESS.toLowerCase()) {
+        if (!user.roles || !user.roles.includes('CMS')) {
+          user.roles = Array.from(new Set([...(user.roles || []), 'CMS']));
+        }
+      }
     }
 
-    // Save new or updated user with nonce
     await user.save();
-
-    // Return the nonce to the frontend for signing
     return res.status(200).json({ nonce });
   } catch (error) {
     console.error('❌ Error generating nonce:', error);
@@ -49,63 +55,111 @@ const getNonce = async (req, res) => {
 };
 
 /**
- * @desc    Verifies the signed nonce to authenticate the Ethereum wallet owner.
- *          If valid, clears the nonce and issues a JWT token for session auth.
+ * @desc    Verifies the signed nonce and issues access + refresh tokens.
  * @route   POST /auth/ethereum/verify
  * @access  Public
  */
 const verifySignature = async (req, res) => {
   const { ethereumAddress, signature } = req.body;
 
-  // Ensure both address and signature are present
   if (!ethereumAddress || !signature) {
     return res.status(400).json({ error: 'Ethereum address and signature are required' });
   }
 
   try {
-    // Find the user by Ethereum address
     const user = await User.findOne({ ethereumAddress });
 
-    // Make sure the user exists and has a nonce waiting to be verified
     if (!user || !user.nonce) {
       return res.status(400).json({ error: 'Invalid or expired Ethereum login attempt' });
     }
 
-    // Reconstruct the signed message using the stored nonce
     const message = `Sign this message to log in: ${user.nonce}`;
-
-    // Use ethers.js to recover the address from the signature
     const recoveredAddress = ethers.verifyMessage(message, signature);
 
-    // Compare recovered address with the provided address
     if (recoveredAddress.toLowerCase() !== ethereumAddress.toLowerCase()) {
       return res.status(401).json({ error: 'Invalid signature - verification failed' });
     }
 
-    // Signature is valid — clear the nonce so it can't be reused
     user.nonce = null;
+
+    // If this ethereum address is the configured CMS address, ensure the user
+    // has the CMS role before issuing tokens.
+    if (CMS_ETH_ADDRESS && ethereumAddress.toLowerCase() === CMS_ETH_ADDRESS.toLowerCase()) {
+      if (!user.roles || !user.roles.includes('CMS')) {
+        user.roles = Array.from(new Set([...(user.roles || []), 'CMS']));
+      }
+    }
+
+    // Generate refresh token (valid 30 days)
+    const refreshToken = jwt.sign(
+      { userId: user._id },
+      process.env.REFRESH_TOKEN_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    // Store refresh token in DB
+    user.refreshToken = refreshToken;
     await user.save();
 
-    // Create a JWT token that includes the user ID and roles
-    const token = jwt.sign(
+    // Generate access token (short-lived)
+    const accessToken = jwt.sign(
       {
         userId: user._id,
         ethereumAddress: user.ethereumAddress,
-        roles: user.roles
+        roles: user.roles,
+        username: user.username || 'Anonymous'
       },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' } // Token valid for 1 hour
+      { expiresIn: '15m' }
     );
 
-    // Return the JWT to the client for session handling
-    return res.status(200).json({ token });
+    return res.status(200).json({ accessToken, refreshToken });
   } catch (error) {
     console.error('❌ Signature verification failed:', error);
     return res.status(500).json({ error: 'Internal server error during signature verification' });
   }
 };
 
+/**
+ * @desc    Issues new access token from valid refresh token
+ * @route   POST /auth/ethereum/refresh
+ * @access  Public
+ */
+const refreshAccessToken = async (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return res.status(401).json({ message: 'Refresh token required' });
+  }
+
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    const user = await User.findById(decoded.userId);
+
+    if (!user || user.refreshToken !== refreshToken) {
+      return res.status(403).json({ message: 'Invalid refresh token' });
+    }
+
+    const newAccessToken = jwt.sign(
+      {
+        userId: user._id,
+        ethereumAddress: user.ethereumAddress,
+        roles: user.roles,
+        username: user.username || 'Anonymous'
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    return res.status(200).json({ accessToken: newAccessToken });
+  } catch (err) {
+    console.error('❌ Refresh token error:', err);
+    return res.status(403).json({ message: 'Invalid or expired refresh token' });
+  }
+};
+
 module.exports = {
   getNonce,
-  verifySignature
+  verifySignature,
+  refreshAccessToken
 };
