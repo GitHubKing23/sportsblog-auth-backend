@@ -1,11 +1,16 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const { connectDB } = require('./config/db');
+const { connectDB } = require('../db/connection');
 
 dotenv.config();
 // initialize ArangoDB connection
-connectDB();
+connectDB()
+  .then(() => console.log('✅ ArangoDB connection ready'))
+  .catch((error) => {
+    console.error('❌ Failed to connect to ArangoDB:', error);
+    process.exit(1);
+  });
 
 const app = express();
 
@@ -55,19 +60,14 @@ app.use((err, req, res, next) => {
 });
 
 // Routes
-const ethereumAuthRoutes = require('./routes/ethereumAuthRoutes');
-const refreshRoutes = require('./routes/refreshRoutes');
-const protectedRoutes = require('./routes/protected'); // added
+const authRoutes = require('./routes/authRoutes');
+const protectedRoutes = require('./routes/protected');
 
-// 🔍 Debug line to verify what is being exported
-console.log('refreshRoutes type:', typeof refreshRoutes); // 👈 This should log "function"
-
-app.use('/auth/ethereum', ethereumAuthRoutes);
-app.use('/auth', refreshRoutes);
-app.use('/protected', protectedRoutes); // added
+app.use('/api/auth', authRoutes);
+app.use('/protected', protectedRoutes);
 
 app.get('/', (req, res) => {
-  res.send('✅ Sports Blog Authentication Backend is running (Ethereum only)!');
+  res.send('✅ Sports Blog Authentication Backend is running (Email + ArangoDB)!');
 });
 
 const PORT = process.env.PORT || 5000;

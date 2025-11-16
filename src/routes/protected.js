@@ -1,10 +1,15 @@
 const express = require('express');
-const router = express.Router();
-const authenticate = require('../middleware/authenticate'); // adjust path if different
+const authMiddleware = require('../middleware/authMiddleware');
+const adminOnly = require('../middleware/adminMiddleware');
 
-// returns the authenticated user object (from req.user)
-router.get('/test', authenticate, (req, res) => {
+const router = express.Router();
+
+router.get('/me', authMiddleware, (req, res) => {
   return res.json({ ok: true, user: req.user });
+});
+
+router.get('/admin/ping', authMiddleware, adminOnly, (req, res) => {
+  return res.json({ ok: true, message: 'Admin endpoint reached.' });
 });
 
 module.exports = router;

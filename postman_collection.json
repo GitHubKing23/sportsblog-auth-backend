@@ -1,13 +1,13 @@
 {
   "info": {
-    "_postman_id": "b8f1e3a4-0000-4000-8000-000000000000",
-    "name": "Sportsblog Auth - Ethereum CMS",
+    "_postman_id": "c70eaf11-5e8f-4e95-9d65-000000000001",
+    "name": "Sportsblog Auth - Email + ArangoDB",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Collection to test Ethereum nonce/sign/verify flow and token usage (CMS address prefilled)."
+    "description": "Collection to exercise the email/password authentication flow backed by ArangoDB."
   },
   "item": [
     {
-      "name": "1 - Get Nonce",
+      "name": "1 - Register",
       "request": {
         "method": "POST",
         "header": [
@@ -18,7 +18,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"ethereumAddress\": \"{{ethereumAddress}}\"\n}",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"name\": \"{{name}}\"\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -26,14 +26,14 @@
           }
         },
         "url": {
-          "raw": "{{server_url}}/auth/ethereum/nonce",
+          "raw": "{{server_url}}/api/auth/register",
           "host": [
             "{{server_url}}"
           ],
           "path": [
+            "api",
             "auth",
-            "ethereum",
-            "nonce"
+            "register"
           ]
         }
       },
@@ -43,14 +43,14 @@
           "listen": "test",
           "script": {
             "exec": [
+              "pm.test('status is 201', () => pm.response.to.have.status(201));",
               "const json = pm.response.json();",
-              "if (json && json.nonce) {",
-              "  pm.environment.set('nonce', json.nonce);",
-              "  pm.environment.set('message', `Sign this message to log in: ${json.nonce}`);",
-              "  console.log('Saved nonce and message to environment.');",
-              "} else {",
-              "  pm.test('nonce present', () => pm.expect(json.nonce).to.be.a('string'));",
-              "}"
+              "if (json.accessToken) pm.environment.set('accessToken', json.accessToken);",
+              "if (json.refreshToken) pm.environment.set('refreshToken', json.refreshToken);",
+              "if (json.user) {",
+              "  pm.environment.set('userId', json.user.id || json.user._key || '');",
+              "}",
+              "console.log('Stored tokens from register response.');"
             ],
             "type": "text/javascript"
           }
@@ -58,7 +58,7 @@
       ]
     },
     {
-      "name": "2 - Verify Signature",
+      "name": "2 - Login",
       "request": {
         "method": "POST",
         "header": [
@@ -69,7 +69,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"ethereumAddress\": \"{{ethereumAddress}}\",\n  \"signature\": \"{{signature}}\"\n}",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -77,14 +77,14 @@
           }
         },
         "url": {
-          "raw": "{{server_url}}/auth/ethereum/verify",
+          "raw": "{{server_url}}/api/auth/login",
           "host": [
             "{{server_url}}"
           ],
           "path": [
+            "api",
             "auth",
-            "ethereum",
-            "verify"
+            "login"
           ]
         }
       },
@@ -94,26 +94,11 @@
           "listen": "test",
           "script": {
             "exec": [
-              "const json = pm.response.json();",
               "pm.test('status is 200', () => pm.response.to.have.status(200));",
-              "if (json.accessToken) {",
-              "  pm.environment.set('accessToken', json.accessToken);",
-              "}",
-              "if (json.refreshToken) {",
-              "  pm.environment.set('refreshToken', json.refreshToken);",
-              "}",
-              "// Try to decode access token payload and assert roles include CMS",
-              "try {",
-              "  const token = json.accessToken;",
-              "  if (token) {",
-              "    const payload = JSON.parse(atob(token.split('.')[1]));",
-              "    console.log('Decoded payload:', payload);",
-              "    pm.environment.set('tokenPayload', JSON.stringify(payload));",
-              "    if (payload.roles) pm.test('roles include CMS', () => pm.expect(payload.roles).to.include('CMS'));",
-              "  }",
-              "} catch (e) {",
-              "  console.warn('Could not decode token in test script', e);",
-              "}"
+              "const json = pm.response.json();",
+              "if (json.accessToken) pm.environment.set('accessToken', json.accessToken);",
+              "if (json.refreshToken) pm.environment.set('refreshToken', json.refreshToken);",
+              "console.log('Stored tokens from login response.');"
             ],
             "type": "text/javascript"
           }
@@ -140,13 +125,13 @@
           }
         },
         "url": {
-          "raw": "{{server_url}}/auth/ethereum/refresh",
+          "raw": "{{server_url}}/api/auth/refresh",
           "host": [
             "{{server_url}}"
           ],
           "path": [
+            "api",
             "auth",
-            "ethereum",
             "refresh"
           ]
         }
@@ -157,10 +142,10 @@
           "listen": "test",
           "script": {
             "exec": [
-              "const json = pm.response.json();",
               "pm.test('status is 200', () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
               "if (json.accessToken) pm.environment.set('accessToken', json.accessToken);",
-              "console.log('Refreshed access token stored to environment.');"
+              "console.log('Refresh issued new access token.');"
             ],
             "type": "text/javascript"
           }
@@ -168,7 +153,7 @@
       ]
     },
     {
-      "name": "4 - Protected Test (requires Authorization)",
+      "name": "4 - Protected /me",
       "request": {
         "method": "GET",
         "header": [
@@ -178,13 +163,13 @@
           }
         ],
         "url": {
-          "raw": "{{server_url}}/protected/test",
+          "raw": "{{server_url}}/protected/me",
           "host": [
             "{{server_url}}"
           ],
           "path": [
             "protected",
-            "test"
+            "me"
           ]
         }
       },
@@ -195,7 +180,45 @@
           "script": {
             "exec": [
               "pm.test('status is 200', () => pm.response.to.have.status(200));",
-              "console.log('Protected endpoint response:', pm.response.text());"
+              "pm.test('response contains user payload', () => {",
+              "  const json = pm.response.json();",
+              "  pm.expect(json).to.have.property('user');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5 - Admin ping",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{server_url}}/protected/admin/ping",
+          "host": [
+            "{{server_url}}"
+          ],
+          "path": [
+            "protected",
+            "admin",
+            "ping"
+          ]
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 200 for admin token', () => pm.response.to.have.status(200));"
             ],
             "type": "text/javascript"
           }
@@ -203,35 +226,13 @@
       ]
     }
   ],
-  "event": [],
   "variable": [
-    {
-      "key": "server_url",
-      "value": "http://localhost:5000"
-    },
-    {
-      "key": "ethereumAddress",
-      "value": "0x3ff964e530ece8587da1b67d9a43de5d734ef0de"
-    },
-    {
-      "key": "nonce",
-      "value": ""
-    },
-    {
-      "key": "message",
-      "value": ""
-    },
-    {
-      "key": "signature",
-      "value": ""
-    },
-    {
-      "key": "accessToken",
-      "value": ""
-    },
-    {
-      "key": "refreshToken",
-      "value": ""
-    }
+    { "key": "server_url", "value": "http://localhost:5000" },
+    { "key": "email", "value": "user1@example.com" },
+    { "key": "password", "value": "StrongPass123" },
+    { "key": "name", "value": "First User" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "userId", "value": "" }
   ]
 }
